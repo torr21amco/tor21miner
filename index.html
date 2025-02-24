@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tor21Miner</title>
     <style>
         body {
@@ -17,6 +17,8 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            -webkit-user-select: none; /* Evita selección */
+            user-select: none;
         }
         #stars {
             position: absolute;
@@ -39,57 +41,64 @@
             right: 10px;
             display: flex;
             justify-content: space-between;
-            font-size: 18px;
+            font-size: 16px; /* Reducido para móviles */
             z-index: 10;
         }
         #tap-area {
-            width: 250px;
-            height: 250px;
+            width: 200px; /* Reducido para móviles */
+            height: 200px;
             background: url('images/2rt_logo.png') no-repeat center;
             background-size: contain;
             cursor: pointer;
             transition: transform 0.1s;
+            outline: none; /* Elimina borde al tocar */
+            -webkit-tap-highlight-color: transparent; /* Elimina resaltado en móviles */
         }
-        #tap-area:hover {
+        #tap-area:hover, #tap-area:active {
             transform: scale(1.05);
         }
         #ship-area {
             position: absolute;
-            left: 20px;
-            bottom: 100px;
-            width: 100px;
-            height: 100px;
+            left: 10px;
+            bottom: 80px; /* Ajustado para no solaparse con menú */
+            width: 80px; /* Reducido para móviles */
+            height: 80px;
             background: url('images/spaceship_basic.png') no-repeat center;
             background-size: contain;
+            z-index: 5;
         }
         .menu {
             position: absolute;
-            bottom: 20px;
+            bottom: 10px;
             display: flex;
-            gap: 10px;
+            flex-wrap: wrap; /* Ajuste en pantallas pequeñas */
+            gap: 5px; /* Reducido para más espacio */
+            justify-content: center;
+            z-index: 10;
         }
         .button {
             background: linear-gradient(45deg, #ff6f61, #e94560);
             color: white;
-            padding: 10px 20px;
+            padding: 8px 15px; /* Reducido para móviles */
             border: none;
-            border-radius: 25px;
+            border-radius: 20px;
             cursor: pointer;
-            font-size: 16px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            font-size: 14px; /* Reducido para móviles */
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
             transition: transform 0.2s, box-shadow 0.2s;
         }
-        .button:hover {
+        .button:hover, .button:active {
             transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 5px 7px rgba(0, 0, 0, 0.4);
         }
         #energy-bar {
-            width: 200px;
-            height: 20px;
+            width: 150px; /* Reducido para móviles */
+            height: 15px;
             background: #333;
             border-radius: 10px;
             overflow: hidden;
             margin-top: 10px;
+            z-index: 5;
         }
         #energy-fill {
             height: 100%;
@@ -98,19 +107,25 @@
         }
         #tasks {
             position: absolute;
-            top: 60px;
+            top: 50px;
             left: 10px;
             background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
+            padding: 8px;
             border-radius: 10px;
+            font-size: 14px; /* Reducido para móviles */
+            max-width: 150px; /* Limita ancho para evitar solapamiento */
+            z-index: 10;
         }
         #ranking {
             position: absolute;
-            top: 60px;
+            top: 50px;
             right: 10px;
             background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
+            padding: 8px;
             border-radius: 10px;
+            font-size: 14px;
+            max-width: 150px;
+            z-index: 10;
         }
     </style>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -137,7 +152,7 @@
     <div id="energy-bar"><div id="energy-fill" style="width: 100%;"></div></div>
     <div class="menu">
         <button class="button" onclick="upgradeShip()">Mejorar Nave</button>
-        <button class="button" onclick="connectWallet()">Conectar Wallet</button>
+        <button class="button" onclick="connectWallet()">Registrar Wallet</button>
         <button class="button" onclick="buyTokens()">Comprar 2RT</button>
         <button class="button" onclick="showAffiliate()">Afiliados</button>
     </div>
@@ -194,8 +209,7 @@
                 Telegram.WebApp.sendData(`/tap ${userId}`);
                 document.getElementById("points").innerHTML = `Puntos: ${points}`;
                 updateEnergyBar();
-                document.getElementById("tap-area").style.transform = "scale(1.1)";
-                setTimeout(() => document.getElementById("tap-area").style.transform = "scale(1)", 100);
+                Telegram.WebApp.showAlert(`¡Minaste ${earned} puntos!`);
             } else {
                 Telegram.WebApp.showAlert("¡Sin energía! Espera a que se recargue.");
             }
@@ -218,18 +232,36 @@
 
         function upgradeShip() {
             Telegram.WebApp.sendData(`/upgrade ${userId}`);
+            Telegram.WebApp.showAlert("Solicitando mejora de nave...");
         }
 
         function connectWallet() {
-            Telegram.WebApp.sendData(`/wallet ${userId} prompt`);
+            Telegram.WebApp.showPopup({
+                title: "Registrar Wallet",
+                message: "Ingresa tu dirección Polygon:",
+                buttons: [
+                    { id: "submit", type: "default", text: "Enviar" },
+                    { type: "cancel", text: "Cancelar" }
+                ]
+            }, (buttonId) => {
+                if (buttonId === "submit") {
+                    let wallet = prompt("Dirección Polygon:");
+                    if (wallet) {
+                        Telegram.WebApp.sendData(`/wallet ${userId} ${wallet}`);
+                        Telegram.WebApp.showAlert("Wallet enviada para registro.");
+                    }
+                }
+            });
         }
 
         function buyTokens() {
             Telegram.WebApp.sendData(`/buy_menu ${userId}`);
+            Telegram.WebApp.showAlert("Abriendo menú de compra...");
         }
 
         function showAffiliate() {
             Telegram.WebApp.sendData(`/affiliate ${userId}`);
+            Telegram.WebApp.showAlert("Mostrando enlace de afiliado...");
         }
 
         function fetchRanking() {

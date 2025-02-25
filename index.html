@@ -105,7 +105,7 @@
         .tap-effect {
             position: absolute;
             color: #00ff99;
-            font-size: 30px; /* Más grande */
+            font-size: 30px;
             font-weight: bold;
             pointer-events: none;
             animation: float 1s ease-out forwards;
@@ -175,7 +175,7 @@
             text-align: left;
         }
         #tasks.available::before {
-            content: "★ "; /* Indicador de logro disponible */
+            content: "★ ";
             color: #00ff99;
         }
         #ranking {
@@ -221,13 +221,12 @@
     <div class="menu">
         <button class="button" id="upgrade-btn">Mejorar Nave</button>
         <button class="button" id="wallet-btn">Regístrate</button>
-        <button class="button" id="buy-btn">Comprar 2RT</button>
         <button class="button" id="affiliate-btn">Invitar</button>
         <button class="button" id="community-btn">Comunidad</button>
         <button class="button" id="share-btn">Compartir Logro</button>
     </div>
-    <audio id="tap-sound" src="https://cdn.pixabay.com/audio/2023/03/15/tap-sound.mp3" preload="auto"></audio>
-    <audio id="bg-music" src="https://cdn.pixabay.com/audio/2023/03/15/space-theme.mp3" loop preload="auto" volume="0.1"></audio>
+    <audio id="tap-sound" src="https://cdn.pixabay.com/audio/2022/03/15/02-23-47-664_uwz5kvt9.mp3" preload="auto"></audio>
+    <audio id="bg-music" src="https://cdn.pixabay.com/audio/2024/08/28/audio_39b2c0ed-5d62-4c5f-91cb-53aa82fb54eb.mp3" loop preload="auto" volume="0.1"></audio>
     <script>
         const script = document.createElement('script');
         script.src = "https://telegram.org/js/telegram-web-app.js";
@@ -254,7 +253,7 @@
             invites: 0,
             energy: 100,
             maxEnergy: 100,
-            tasks: { social: false, achievedLogros: new Set() }, // Usar Set para logros únicos
+            tasks: { social: false, achievedLogros: new Set() },
             wallet: null,
             tapMultiplier: { "Basic": 1, "Bronze": 2, "Silver": 5, "Gold": 10 },
 
@@ -265,19 +264,33 @@
                     Telegram.WebApp.expand();
                     console.log("Telegram Web App listo");
 
-                    // Resetear datos
-                    localStorage.removeItem(`tor21miner_${this.userId}`);
-                    this.points = 0;
-                    this.ship = "Basic";
-                    this.invites = 0;
-                    this.energy = 100;
-                    this.tasks = { social: false, achievedLogros: new Set() };
-                    this.wallet = null;
-
                     setTimeout(() => {
                         this.userId = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.id : "unknown";
-                        this.username = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.username : "Anonimo";
+                        this.username = Telegram.WebApp.initDataUnsafe.user && Telegram.WebApp.initDataUnsafe.user.username ? Telegram.WebApp.initDataUnsafe.user.username : "Anonimo";
                         console.log("Usuario:", this.userId, this.username);
+
+                        const savedData = localStorage.getItem(`tor21miner_${this.userId}`);
+                        if (savedData) {
+                            const data = JSON.parse(savedData);
+                            this.points = data.points || 0;
+                            this.ship = data.ship || "Basic";
+                            this.invites = data.invites || 0;
+                            this.energy = data.energy || 100;
+                            this.maxEnergy = data.maxEnergy || 100;
+                            this.tasks = data.tasks || { social: false, achievedLogros: new Set() };
+                            this.wallet = data.wallet || null;
+                            if (data.tasks && data.tasks.achievedLogros) {
+                                this.tasks.achievedLogros = new Set(data.tasks.achievedLogros);
+                            }
+                        } else {
+                            this.points = 0;
+                            this.ship = "Basic";
+                            this.invites = 0;
+                            this.energy = 100;
+                            this.tasks = { social: false, achievedLogros: new Set() };
+                            this.wallet = null;
+                        }
+                        console.log("Datos cargados:", { points: this.points, ship: this.ship, invites: this.invites, energy: this.energy, wallet: this.wallet });
 
                         this.updateUI();
                         this.bindEvents();
@@ -285,10 +298,9 @@
 
                         document.getElementById("loading-screen").style.display = "none";
 
-                        // Iniciar música de fondo
                         const bgMusic = document.getElementById("bg-music");
-                        bgMusic.volume = 0.1; // Volumen bajo
-                        bgMusic.play().catch(e => console.log("Música de fondo bloqueada:", e));
+                        bgMusic.volume = 0.1;
+                        bgMusic.play().catch(e => console.log("Música de fondo bloqueada, espera interacción:", e));
 
                         setInterval(() => {
                             if (this.energy < this.maxEnergy) {
@@ -309,7 +321,6 @@
                 const tapArea = document.getElementById("tap-area");
                 const upgradeBtn = document.getElementById("upgrade-btn");
                 const walletBtn = document.getElementById("wallet-btn");
-                const buyBtn = document.getElementById("buy-btn");
                 const affiliateBtn = document.getElementById("affiliate-btn");
                 const communityBtn = document.getElementById("community-btn");
                 const shareBtn = document.getElementById("share-btn");
@@ -320,8 +331,6 @@
                 upgradeBtn.addEventListener("touchstart", (e) => { e.preventDefault(); this.upgradeShip(); });
                 walletBtn.addEventListener("click", () => this.connectWallet());
                 walletBtn.addEventListener("touchstart", (e) => { e.preventDefault(); this.connectWallet(); });
-                buyBtn.addEventListener("click", () => this.buyTokens());
-                buyBtn.addEventListener("touchstart", (e) => { e.preventDefault(); this.buyTokens(); });
                 affiliateBtn.addEventListener("click", () => this.showAffiliate());
                 affiliateBtn.addEventListener("touchstart", (e) => { e.preventDefault(); this.showAffiliate(); });
                 communityBtn.addEventListener("click", () => this.joinCommunity());
@@ -339,7 +348,7 @@
                     maxEnergy: this.maxEnergy,
                     tasks: {
                         social: this.tasks.social,
-                        achievedLogros: Array.from(this.tasks.achievedLogros) // Convertir Set a Array para JSON
+                        achievedLogros: Array.from(this.tasks.achievedLogros)
                     },
                     wallet: this.wallet
                 };
@@ -357,7 +366,7 @@
                 const tasksDiv = document.getElementById("tasks");
                 tasksDiv.classList.toggle("available", this.hasShareableLogro());
                 document.getElementById("task-share").innerHTML = `Compartir Logro: ${this.tasks.achievedLogros.size}`;
-                document.getElementById("wallet-btn").textContent = this.wallet ? "Ud. ya está registrado" : "Regístrate";
+                document.getElementById("wallet-btn").textContent = this.wallet ? "Registrado" : "Regístrate";
                 this.updateShipImage();
                 this.updateEnergyBar();
             },
@@ -385,6 +394,7 @@
                     this.saveData();
                     const tapSound = document.getElementById("tap-sound");
                     tapSound.currentTime = 0;
+                    tapSound.volume = 0.3; // Volumen bajo
                     tapSound.play().catch(e => console.log("Sonido bloqueado:", e));
                 } else {
                     this.showAlert("¡Sin energía! Espera a que se recargue.");
@@ -393,7 +403,7 @@
 
             showTapEffect(earned) {
                 const tapArea = document.getElementById("tap-area");
-                for (let i = 0; i < 3; i++) { // 3 efectos por tap
+                for (let i = 0; i < 3; i++) {
                     const effect = document.createElement("div");
                     effect.className = "tap-effect";
                     effect.textContent = `+${earned}`;
@@ -484,17 +494,12 @@
                 }
             },
 
-            buyTokens() {
-                console.log("Comprar 2RT ejecutado");
-                Telegram.WebApp.sendData(`/buy_menu ${this.userId}`);
-            },
-
             showAffiliate() {
                 console.log("Invitar ejecutado");
                 const inviteLink = `https://t.me/Torr21_bot?start=ref_${this.userId}`;
                 const inviteMessage = `¡Únete a Tor21Miner y mina puntos en Telegram! Usa mi enlace: ${inviteLink}`;
                 Telegram.WebApp.openLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(inviteMessage)}`);
-                this.invites += 1; // Simulación, en producción verificar con el bot
+                this.invites += 1; // Simulación, en producción verificar con bot
                 this.updateUI();
                 this.saveData();
             },

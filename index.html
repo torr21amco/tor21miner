@@ -73,7 +73,7 @@
         }
         #hud {
             position: absolute;
-            top: 10px;
+            top: 40px; /* Espacio para el logo */
             left: 10px;
             right: 10px;
             display: flex;
@@ -83,7 +83,7 @@
         }
         #miner-info {
             position: absolute;
-            top: 40px;
+            top: 70px;
             left: 10px;
             font-size: 14px;
             z-index: 10;
@@ -164,7 +164,7 @@
         }
         #tasks {
             position: absolute;
-            top: 80px;
+            top: 100px;
             left: 10px;
             background: rgba(0, 0, 0, 0.7);
             padding: 8px;
@@ -180,7 +180,7 @@
         }
         #ranking {
             position: absolute;
-            top: 80px;
+            top: 100px;
             right: 10px;
             background: rgba(0, 0, 0, 0.7);
             padding: 8px;
@@ -204,6 +204,63 @@
         #sound-toggle.muted {
             opacity: 0.5;
         }
+        #info-icon {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 24px;
+            height: 24px;
+            background: url('images/info-icon.png') no-repeat center;
+            background-size: contain;
+            cursor: pointer;
+            z-index: 20;
+        }
+        #info-popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 30;
+            overflow-y: auto;
+        }
+        #info-popup h2 {
+            margin-top: 0;
+        }
+        #info-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background: #ff6f61;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+        }
+        #header {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            z-index: 20;
+        }
+        #header-logo {
+            width: 24px;
+            height: 24px;
+            background: url('images/2rt_logo.png') no-repeat center;
+            background-size: contain;
+            margin-right: 5px;
+        }
+        /* Ocultar pie de Netlify */
+        footer, .netlify-footer { display: none !important; }
     </style>
 </head>
 <body>
@@ -212,6 +269,10 @@
         <div id="loading-bar">
             <div id="loading-fill"></div>
         </div>
+    </div>
+    <div id="header">
+        <div id="header-logo"></div>
+        <span>Tor21Miner</span>
     </div>
     <div id="stars"></div>
     <div id="hud">
@@ -227,7 +288,7 @@
     </div>
     <div id="ranking">
         <h3>Top Mineros</h3>
-        <p id="top-list">Minero: 100,000<br>Astro: 80,000<br>Space: 50,000</p>
+        <p id="top-list">Minero: 10,000,000<br>Astro: 6,000,000<br>Space: 4,000,000</p>
     </div>
     <div id="tap-area"></div>
     <div id="ship-area"></div>
@@ -240,6 +301,14 @@
         <button class="button" id="share-btn">Compartir Logro</button>
     </div>
     <div id="sound-toggle"></div>
+    <div id="info-icon"></div>
+    <div id="info-popup">
+        <h2>Instrucciones</h2>
+        <p><strong>Cómo jugar:</strong> Toca el logo para ganar puntos. Usa tu energía sabiamente; se recarga 1 punto por minuto.</p>
+        <p><strong>Reglas:</strong> Registra tu wallet para jugar. Mejora tu nave con puntos e invitados. Solo se cuentan invitados que se registren y jueguen con tu enlace.</p>
+        <p><strong>Funcionamiento:</strong> Gana puntos por tap (1-10 según nave), comparte logros (+50 puntos/logro único), únete a la comunidad (+100 puntos una vez). Top Mineros: 10M, 6M, 4M.</p>
+        <button id="info-close">Cerrar</button>
+    </div>
     <audio id="tap-sound" src="sounds/tap.mp3" preload="auto"></audio>
     <audio id="bg-music" src="sounds/background.mp3" loop preload="auto" volume="0.1"></audio>
     <script>
@@ -267,6 +336,7 @@
             ship: "Basic",
             invites: 0,
             energy: 100,
+            energyTimestamp: Date.now(),
             maxEnergy: 100,
             tasks: { social: false, achievedLogros: new Set() },
             wallet: null,
@@ -283,7 +353,16 @@
                     setTimeout(() => {
                         this.userId = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.id : "unknown";
                         this.username = Telegram.WebApp.initDataUnsafe.user && Telegram.WebApp.initDataUnsafe.user.username ? Telegram.WebApp.initDataUnsafe.user.username : "Anonimo";
-                        console.log("Usuario:", this.userId, this.username);
+
+                        // Resetear a 0 (solo esta vez)
+                        localStorage.removeItem(`tor21miner_${this.userId}`);
+                        this.points = 0;
+                        this.ship = "Basic";
+                        this.invites = 0;
+                        this.energy = 100;
+                        this.energyTimestamp = Date.now();
+                        this.tasks = { social: false, achievedLogros: new Set() };
+                        this.wallet = null;
 
                         const savedData = localStorage.getItem(`tor21miner_${this.userId}`);
                         if (savedData) {
@@ -292,13 +371,18 @@
                             this.ship = data.ship || "Basic";
                             this.invites = data.invites || 0;
                             this.energy = data.energy || 100;
-                            this.maxEnergy = data.maxEnergy || 100;
+                            this.energyTimestamp = data.energyTimestamp || Date.now();
                             this.tasks = data.tasks || { social: false, achievedLogros: new Set() };
                             this.wallet = data.wallet || null;
                             this.username = data.username || this.username;
                             if (data.tasks && data.tasks.achievedLogros) {
                                 this.tasks.achievedLogros = new Set(data.tasks.achievedLogros);
                             }
+                            // Restaurar energía basada en tiempo transcurrido
+                            const now = Date.now();
+                            const minutesPassed = Math.floor((now - this.energyTimestamp) / 60000);
+                            this.energy = Math.min(this.maxEnergy, this.energy + minutesPassed);
+                            this.energyTimestamp = now;
                         }
                         console.log("Datos cargados:", { points: this.points, ship: this.ship, invites: this.invites, energy: this.energy, wallet: this.wallet, username: this.username });
 
@@ -313,8 +397,11 @@
                         bgMusic.play().catch(e => console.log("Música de fondo bloqueada, espera interacción:", e));
 
                         setInterval(() => {
-                            if (this.energy < this.maxEnergy) {
-                                this.energy += 1;
+                            const now = Date.now();
+                            const minutesPassed = Math.floor((now - this.energyTimestamp) / 60000);
+                            if (minutesPassed > 0) {
+                                this.energy = Math.min(this.maxEnergy, this.energy + minutesPassed);
+                                this.energyTimestamp = now;
                                 this.updateEnergyBar();
                                 this.saveData();
                                 console.log("Energía recargada:", this.energy);
@@ -335,6 +422,8 @@
                 const communityBtn = document.getElementById("community-btn");
                 const shareBtn = document.getElementById("share-btn");
                 const soundToggle = document.getElementById("sound-toggle");
+                const infoIcon = document.getElementById("info-icon");
+                const infoClose = document.getElementById("info-close");
 
                 tapArea.addEventListener("click", () => this.tap());
                 tapArea.addEventListener("touchstart", (e) => { e.preventDefault(); this.tap(); });
@@ -349,6 +438,8 @@
                 shareBtn.addEventListener("click", () => this.shareInfo());
                 shareBtn.addEventListener("touchstart", (e) => { e.preventDefault(); this.shareInfo(); });
                 soundToggle.addEventListener("click", () => this.toggleSound());
+                infoIcon.addEventListener("click", () => document.getElementById("info-popup").style.display = "block");
+                infoClose.addEventListener("click", () => document.getElementById("info-popup").style.display = "none");
             },
 
             saveData() {
@@ -357,6 +448,7 @@
                     ship: this.ship,
                     invites: this.invites,
                     energy: this.energy,
+                    energyTimestamp: this.energyTimestamp,
                     maxEnergy: this.maxEnergy,
                     tasks: {
                         social: this.tasks.social,
@@ -370,7 +462,7 @@
             },
 
             updateUI() {
-                document.getElementById("points").innerHTML = `Puntos: ${this.points}`;
+                document.getElementById("points").innerHTML = `Puntos: ${this.points.toLocaleString()}`;
                 document.getElementById("ship").innerHTML = `Nave: ${this.ship}`;
                 document.getElementById("invites").innerHTML = `Invitados: ${this.invites}`;
                 document.getElementById("username").innerHTML = this.username;
@@ -454,31 +546,31 @@
                     this.showAlert("¡Registra tu wallet para jugar!");
                     return;
                 }
-                if (this.ship === "Basic" && this.points >= 1000) {
-                    this.showConfirm("¿Deseas actualizar tu nave de Basic a Bronze? Se descontarán 1,000 puntos.", (confirmed) => {
+                if (this.ship === "Basic" && this.points >= 100000) {
+                    this.showConfirm("¿Deseas actualizar tu nave de Basic a Bronze? Se descontarán 100,000 puntos.", (confirmed) => {
                         if (confirmed) {
                             this.ship = "Bronze";
-                            this.points -= 1000;
+                            this.points -= 100000;
                             this.showAlert("¡Nave mejorada a Bronce! +2 puntos por tap.");
                             this.updateUI();
                             this.saveData();
                         }
                     });
-                } else if (this.ship === "Bronze" && this.points >= 5000 && this.invites >= 3) {
-                    this.showConfirm("¿Deseas actualizar tu nave de Bronze a Silver? Se descontarán 5,000 puntos (requiere 3 invitados).", (confirmed) => {
+                } else if (this.ship === "Bronze" && this.points >= 500000 && this.invites >= 5) {
+                    this.showConfirm("¿Deseas actualizar tu nave de Bronze a Silver? Se descontarán 500,000 puntos (requiere 5 invitados).", (confirmed) => {
                         if (confirmed) {
                             this.ship = "Silver";
-                            this.points -= 5000;
+                            this.points -= 500000;
                             this.showAlert("¡Nave mejorada a Plata! +5 puntos por tap.");
                             this.updateUI();
                             this.saveData();
                         }
                     });
-                } else if (this.ship === "Silver" && this.points >= 10000 && this.invites >= 5) {
-                    this.showConfirm("¿Deseas actualizar tu nave de Silver a Gold? Se descontarán 10,000 puntos (requiere 5 invitados).", (confirmed) => {
+                } else if (this.ship === "Silver" && this.points >= 1000000 && this.invites >= 10) {
+                    this.showConfirm("¿Deseas actualizar tu nave de Silver a Gold? Se descontarán 1,000,000 puntos (requiere 10 invitados).", (confirmed) => {
                         if (confirmed) {
                             this.ship = "Gold";
-                            this.points -= 10000;
+                            this.points -= 1000000;
                             this.showAlert("¡Nave mejorada a Oro! +10 puntos por tap.");
                             this.updateUI();
                             this.saveData();
@@ -486,9 +578,9 @@
                     });
                 } else {
                     let req = "";
-                    if (this.ship === "Basic") req = "1,000 puntos";
-                    else if (this.ship === "Bronze") req = "5,000 puntos y 3 invitados";
-                    else if (this.ship === "Silver") req = "10,000 puntos y 5 invitados";
+                    if (this.ship === "Basic") req = "100,000 puntos";
+                    else if (this.ship === "Bronze") req = "500,000 puntos y 5 invitados";
+                    else if (this.ship === "Silver") req = "1,000,000 puntos y 10 invitados";
                     else if (this.ship === "Gold") req = "¡Ya tienes la mejor nave!";
                     this.showAlert(`Necesitas: ${req}`);
                 }
@@ -521,7 +613,7 @@
                 const inviteLink = `https://t.me/Torr21_bot?start=ref_${this.userId}`;
                 const inviteMessage = `¡Únete a Tor21Miner y mina puntos en Telegram! Usa mi enlace: ${inviteLink}`;
                 Telegram.WebApp.openLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(inviteMessage)}`);
-                this.invites += 1; // Simulación
+                // No incrementar localmente, el bot lo manejará
                 this.updateUI();
                 this.saveData();
             },
@@ -539,20 +631,20 @@
             },
 
             hasShareableLogro() {
-                return (this.points >= 10000 && !this.tasks.achievedLogros.has("10kPoints")) ||
+                return (this.points >= 1000000 && !this.tasks.achievedLogros.has("1MPoints")) ||
                        (this.ship === "Bronze" && !this.tasks.achievedLogros.has("BronzeShip")) ||
                        (this.ship === "Silver" && !this.tasks.achievedLogros.has("SilverShip")) ||
                        (this.ship === "Gold" && !this.tasks.achievedLogros.has("GoldShip")) ||
-                       (this.invites >= 5 && !this.tasks.achievedLogros.has("5Invites"));
+                       (this.invites >= 10 && !this.tasks.achievedLogros.has("10Invites"));
             },
 
             shareInfo() {
                 console.log("Compartir Logro ejecutado");
                 let logro = "";
                 let logroKey = "";
-                if (this.points >= 10000 && !this.tasks.achievedLogros.has("10kPoints")) {
-                    logro = "¡Alcanzé 10,000 puntos en Tor21Miner!";
-                    logroKey = "10kPoints";
+                if (this.points >= 1000000 && !this.tasks.achievedLogros.has("1MPoints")) {
+                    logro = "¡Alcanzé 1,000,000 puntos en Tor21Miner!";
+                    logroKey = "1MPoints";
                 } else if (this.ship === "Bronze" && !this.tasks.achievedLogros.has("BronzeShip")) {
                     logro = "¡Actualicé mi nave a Bronze en Tor21Miner!";
                     logroKey = "BronzeShip";
@@ -562,9 +654,9 @@
                 } else if (this.ship === "Gold" && !this.tasks.achievedLogros.has("GoldShip")) {
                     logro = "¡Actualicé mi nave a Gold en Tor21Miner!";
                     logroKey = "GoldShip";
-                } else if (this.invites >= 5 && !this.tasks.achievedLogros.has("5Invites")) {
-                    logro = "¡Invité a 5 amigos a Tor21Miner!";
-                    logroKey = "5Invites";
+                } else if (this.invites >= 10 && !this.tasks.achievedLogros.has("10Invites")) {
+                    logro = "¡Invité a 10 amigos a Tor21Miner!";
+                    logroKey = "10Invites";
                 } else {
                     this.showAlert("No hay nuevos logros para compartir.");
                     return;

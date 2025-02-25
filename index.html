@@ -17,7 +17,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            -webkit-user-select: none; /* Evita selección */
+            -webkit-user-select: none;
             user-select: none;
         }
         #stars {
@@ -41,18 +41,25 @@
             right: 10px;
             display: flex;
             justify-content: space-between;
-            font-size: 16px; /* Reducido para móviles */
+            font-size: 14px;
+            z-index: 10;
+        }
+        #miner-info {
+            position: absolute;
+            top: 40px;
+            left: 10px;
+            font-size: 14px;
             z-index: 10;
         }
         #tap-area {
-            width: 200px; /* Reducido para móviles */
+            width: 200px;
             height: 200px;
             background: url('images/2rt_logo.png') no-repeat center;
             background-size: contain;
             cursor: pointer;
             transition: transform 0.1s;
-            outline: none; /* Elimina borde al tocar */
-            -webkit-tap-highlight-color: transparent; /* Elimina resaltado en móviles */
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
         }
         #tap-area:hover, #tap-area:active {
             transform: scale(1.05);
@@ -60,8 +67,8 @@
         #ship-area {
             position: absolute;
             left: 10px;
-            bottom: 80px; /* Ajustado para no solaparse con menú */
-            width: 80px; /* Reducido para móviles */
+            bottom: 80px;
+            width: 80px;
             height: 80px;
             background: url('images/spaceship_basic.png') no-repeat center;
             background-size: contain;
@@ -71,19 +78,19 @@
             position: absolute;
             bottom: 10px;
             display: flex;
-            flex-wrap: wrap; /* Ajuste en pantallas pequeñas */
-            gap: 5px; /* Reducido para más espacio */
+            flex-wrap: wrap;
+            gap: 5px;
             justify-content: center;
             z-index: 10;
         }
         .button {
             background: linear-gradient(45deg, #ff6f61, #e94560);
             color: white;
-            padding: 8px 15px; /* Reducido para móviles */
+            padding: 8px 15px;
             border: none;
             border-radius: 20px;
             cursor: pointer;
-            font-size: 14px; /* Reducido para móviles */
+            font-size: 14px;
             box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
             transition: transform 0.2s, box-shadow 0.2s;
         }
@@ -92,7 +99,7 @@
             box-shadow: 0 5px 7px rgba(0, 0, 0, 0.4);
         }
         #energy-bar {
-            width: 150px; /* Reducido para móviles */
+            width: 150px;
             height: 15px;
             background: #333;
             border-radius: 10px;
@@ -107,18 +114,18 @@
         }
         #tasks {
             position: absolute;
-            top: 50px;
+            top: 80px;
             left: 10px;
             background: rgba(0, 0, 0, 0.7);
             padding: 8px;
             border-radius: 10px;
-            font-size: 14px; /* Reducido para móviles */
-            max-width: 150px; /* Limita ancho para evitar solapamiento */
+            font-size: 14px;
+            max-width: 150px;
             z-index: 10;
         }
         #ranking {
             position: absolute;
-            top: 50px;
+            top: 80px;
             right: 10px;
             background: rgba(0, 0, 0, 0.7);
             padding: 8px;
@@ -137,15 +144,15 @@
         <span id="ship">Nave: Basic</span>
         <span id="invites">Invitados: 0</span>
     </div>
+    <div id="miner-info">Minero Espacial: @<span id="username"></span><br>Wallet: <span id="wallet">No registrado</span></div>
     <div id="tasks">
         <h3>Tareas</h3>
-        <p id="task-wallet">Conectar Wallet: 0/1</p>
-        <p id="task-buy">Comprar 2RT: 0/1</p>
         <p id="task-social">Unirse a Comunidad: 0/1</p>
+        <p id="task-share">Compartir Info: 0/1</p>
     </div>
     <div id="ranking">
         <h3>Top Mineros</h3>
-        <p id="top-list">Cargando...</p>
+        <p id="top-list">1. MineroX: 100,000<br>2. AstroY: 80,000<br>3. SpaceZ: 50,000</p>
     </div>
     <div id="tap-area" onclick="tap()"></div>
     <div id="ship-area"></div>
@@ -155,61 +162,76 @@
         <button class="button" onclick="connectWallet()">Registrar Wallet</button>
         <button class="button" onclick="buyTokens()">Comprar 2RT</button>
         <button class="button" onclick="showAffiliate()">Afiliados</button>
+        <button class="button" onclick="joinCommunity()">Unirse a Comunidad</button>
+        <button class="button" onclick="shareInfo()">Compartir Info</button>
     </div>
     <script>
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();
 
         const userId = Telegram.WebApp.initDataUnsafe.user.id;
-        let points = 0;
-        let ship = "Basic";
-        let invites = 0;
-        let energy = 100;
-        let maxEnergy = 100;
-        let tapMultiplier = { "Basic": 1, "Bronze": 2, "Silver": 5, "Gold": 10 };
-        let tasks = { wallet: false, buy: false, social: false };
+        const username = Telegram.WebApp.initDataUnsafe.user.username || "Anonimo";
 
-        fetchStatus();
+        // Inicializar datos del juego desde localStorage
+        let gameData = JSON.parse(localStorage.getItem(`tor21miner_${userId}`)) || {
+            points: 0,
+            ship: "Basic",
+            invites: 0,
+            energy: 100,
+            maxEnergy: 100,
+            tasks: { social: false, share: false },
+            wallet: null
+        };
 
+        // Configuración inicial
+        let points = gameData.points;
+        let ship = gameData.ship;
+        let invites = gameData.invites;
+        let energy = gameData.energy;
+        let maxEnergy = gameData.maxEnergy;
+        let tasks = gameData.tasks;
+        let wallet = gameData.wallet;
+        const tapMultiplier = { "Basic": 1, "Bronze": 2, "Silver": 5, "Gold": 10 };
+
+        // Actualizar HUD y tareas
+        document.getElementById("points").innerHTML = `Puntos: ${points}`;
+        document.getElementById("ship").innerHTML = `Nave: ${ship}`;
+        document.getElementById("invites").innerHTML = `Invitados: ${invites}`;
+        document.getElementById("username").innerHTML = username;
+        document.getElementById("wallet").innerHTML = wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "No registrado";
+        document.getElementById("task-social").innerHTML = `Unirse a Comunidad: ${tasks.social ? '1/1' : '0/1'}`;
+        document.getElementById("task-share").innerHTML = `Compartir Info: ${tasks.share ? '1/1' : '0/1'}`;
+        updateShipImage();
+        updateEnergyBar();
+
+        // Guardar datos en localStorage
+        function saveGameData() {
+            gameData = { points, ship, invites, energy, maxEnergy, tasks, wallet };
+            localStorage.setItem(`tor21miner_${userId}`, JSON.stringify(gameData));
+        }
+
+        // Recarga de energía
         setInterval(() => {
             if (energy < maxEnergy) {
                 energy += 1;
                 updateEnergyBar();
+                saveGameData();
             }
         }, 60000);
 
-        function fetchStatus() {
-            Telegram.WebApp.sendData(`/status ${userId}`);
-            Telegram.WebApp.onEvent('mainButtonClicked', updateStatus);
-        }
-
-        function updateStatus() {
-            let data = Telegram.WebApp.mainButton.text.split('|');
-            points = parseInt(data[0]);
-            ship = data[1];
-            invites = parseInt(data[2]);
-            tasks.wallet = data[3] === "True";
-            tasks.buy = data[4] === "True";
-            tasks.social = data[5] === "True";
-            document.getElementById("points").innerHTML = `Puntos: ${points}`;
-            document.getElementById("ship").innerHTML = `Nave: ${ship}`;
-            document.getElementById("invites").innerHTML = `Invitados: ${invites}`;
-            document.getElementById("task-wallet").innerHTML = `Conectar Wallet: ${tasks.wallet ? '1/1' : '0/1'}`;
-            document.getElementById("task-buy").innerHTML = `Comprar 2RT: ${tasks.buy ? '1/1' : '0/1'}`;
-            document.getElementById("task-social").innerHTML = `Unirse a Comunidad: ${tasks.social ? '1/1' : '0/1'}`;
-            updateShipImage();
-            fetchRanking();
-        }
-
         function tap() {
+            if (!wallet) {
+                Telegram.WebApp.showAlert("¡Registra tu wallet para jugar!");
+                return;
+            }
             if (energy > 0) {
                 energy -= 1;
                 let earned = tapMultiplier[ship];
                 points += earned;
-                Telegram.WebApp.sendData(`/tap ${userId}`);
                 document.getElementById("points").innerHTML = `Puntos: ${points}`;
                 updateEnergyBar();
                 Telegram.WebApp.showAlert(`¡Minaste ${earned} puntos!`);
+                saveGameData();
             } else {
                 Telegram.WebApp.showAlert("¡Sin energía! Espera a que se recargue.");
             }
@@ -231,13 +253,45 @@
         }
 
         function upgradeShip() {
-            Telegram.WebApp.sendData(`/upgrade ${userId}`);
-            Telegram.WebApp.showAlert("Solicitando mejora de nave...");
+            if (!wallet) {
+                Telegram.WebApp.showAlert("¡Registra tu wallet para jugar!");
+                return;
+            }
+            if (ship === "Basic" && points >= 5000) {
+                ship = "Bronze";
+                points -= 5000;
+                Telegram.WebApp.showAlert("¡Nave mejorada a Bronce! +2 puntos por tap.");
+            } else if (ship === "Bronze" && points >= 20000 && invites >= 5) {
+                ship = "Silver";
+                points -= 20000;
+                Telegram.WebApp.showAlert("¡Nave mejorada a Plata! +5 puntos por tap.");
+            } else if (ship === "Silver" && points >= 50000 && invites >= 10) {
+                ship = "Gold";
+                points -= 50000;
+                Telegram.WebApp.showAlert("¡Nave mejorada a Oro! +10 puntos por tap.");
+            } else if (ship === "Gold" && points >= 100000 && invites >= 15) {
+                Telegram.WebApp.showAlert("¡Ya tienes la mejor nave posible!");
+            } else {
+                let req = "";
+                if (ship === "Basic") req = "5,000 puntos";
+                else if (ship === "Bronze") req = "20,000 puntos y 5 invitados";
+                else if (ship === "Silver") req = "50,000 puntos y 10 invitados";
+                else if (ship === "Gold") req = "100,000 puntos y 15 invitados";
+                Telegram.WebApp.showAlert(`Necesitas: ${req}`);
+            }
+            document.getElementById("points").innerHTML = `Puntos: ${points}`;
+            document.getElementById("ship").innerHTML = `Nave: ${ship}`;
+            updateShipImage();
+            saveGameData();
         }
 
         function connectWallet() {
+            if (wallet) {
+                Telegram.WebApp.showAlert(`Wallet ya registrada para el juego: ${wallet}`);
+                return;
+            }
             Telegram.WebApp.showPopup({
-                title: "Registrar Wallet",
+                title: "Registrar Wallet para Jugar",
                 message: "Ingresa tu dirección Polygon:",
                 buttons: [
                     { id: "submit", type: "default", text: "Enviar" },
@@ -245,10 +299,12 @@
                 ]
             }, (buttonId) => {
                 if (buttonId === "submit") {
-                    let wallet = prompt("Dirección Polygon:");
-                    if (wallet) {
-                        Telegram.WebApp.sendData(`/wallet ${userId} ${wallet}`);
-                        Telegram.WebApp.showAlert("Wallet enviada para registro.");
+                    let newWallet = prompt("Dirección Polygon:");
+                    if (newWallet) {
+                        wallet = newWallet;
+                        document.getElementById("wallet").innerHTML = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+                        Telegram.WebApp.showAlert("¡Wallet registrada para jugar!");
+                        saveGameData();
                     }
                 }
             });
@@ -256,16 +312,47 @@
 
         function buyTokens() {
             Telegram.WebApp.sendData(`/buy_menu ${userId}`);
-            Telegram.WebApp.showAlert("Abriendo menú de compra...");
+            Telegram.WebApp.showAlert("Redirigiendo al bot para comprar 2RT...");
         }
 
         function showAffiliate() {
             Telegram.WebApp.sendData(`/affiliate ${userId}`);
-            Telegram.WebApp.showAlert("Mostrando enlace de afiliado...");
+            Telegram.WebApp.showAlert("Consulta tu enlace de afiliado en el chat del bot.");
+            invites += 1; // Simulación (podrías verificar con el bot en producción)
+            document.getElementById("invites").innerHTML = `Invitados: ${invites}`;
+            saveGameData();
         }
 
-        function fetchRanking() {
-            document.getElementById("top-list").innerHTML = "1. MineroX: 100,000\n2. AstroY: 80,000\n3. SpaceZ: 50,000";
+        function joinCommunity() {
+            if (tasks.social) {
+                Telegram.WebApp.showAlert("¡Ya te uniste a la comunidad!");
+                return;
+            }
+            window.open("https://t.me/torr21_2RT", "_blank");
+            tasks.social = true;
+            points += 5000;
+            document.getElementById("task-social").innerHTML = "Unirse a Comunidad: 1/1";
+            document.getElementById("points").innerHTML = `Puntos: ${points}`;
+            Telegram.WebApp.showAlert("¡Unido a la comunidad! +5,000 puntos.");
+            saveGameData();
+        }
+
+        function shareInfo() {
+            if (tasks.share) {
+                Telegram.WebApp.showAlert("¡Ya compartiste la info!");
+                return;
+            }
+            Telegram.WebApp.showPopup({
+                title: "Compartir Info",
+                message: "Comparte Tor21Miner con tus amigos:",
+                buttons: [{ type: "ok", text: "OK" }]
+            });
+            tasks.share = true;
+            points += 5000;
+            document.getElementById("task-share").innerHTML = "Compartir Info: 1/1";
+            document.getElementById("points").innerHTML = `Puntos: ${points}`;
+            Telegram.WebApp.showAlert("¡Info compartida! +5,000 puntos.");
+            saveGameData();
         }
     </script>
 </body>

@@ -190,6 +190,20 @@
             z-index: 10;
             text-align: left;
         }
+        #sound-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 24px;
+            height: 24px;
+            background: url('images/sound-icon.png') no-repeat center;
+            background-size: contain;
+            cursor: pointer;
+            z-index: 20;
+        }
+        #sound-toggle.muted {
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
@@ -225,8 +239,9 @@
         <button class="button" id="community-btn">Comunidad</button>
         <button class="button" id="share-btn">Compartir Logro</button>
     </div>
-    <audio id="tap-sound" src="https://cdn.pixabay.com/audio/2022/03/15/02-23-47-664_uwz5kvt9.mp3" preload="auto"></audio>
-    <audio id="bg-music" src="https://cdn.pixabay.com/audio/2024/08/28/audio_39b2c0ed-5d62-4c5f-91cb-53aa82fb54eb.mp3" loop preload="auto" volume="0.1"></audio>
+    <div id="sound-toggle"></div>
+    <audio id="tap-sound" src="sounds/tap.mp3" preload="auto"></audio>
+    <audio id="bg-music" src="sounds/background.mp3" loop preload="auto" volume="0.1"></audio>
     <script>
         const script = document.createElement('script');
         script.src = "https://telegram.org/js/telegram-web-app.js";
@@ -256,6 +271,7 @@
             tasks: { social: false, achievedLogros: new Set() },
             wallet: null,
             tapMultiplier: { "Basic": 1, "Bronze": 2, "Silver": 5, "Gold": 10 },
+            soundMuted: false,
 
             init() {
                 console.log("Inicializando Tor21Miner...");
@@ -279,18 +295,12 @@
                             this.maxEnergy = data.maxEnergy || 100;
                             this.tasks = data.tasks || { social: false, achievedLogros: new Set() };
                             this.wallet = data.wallet || null;
+                            this.username = data.username || this.username;
                             if (data.tasks && data.tasks.achievedLogros) {
                                 this.tasks.achievedLogros = new Set(data.tasks.achievedLogros);
                             }
-                        } else {
-                            this.points = 0;
-                            this.ship = "Basic";
-                            this.invites = 0;
-                            this.energy = 100;
-                            this.tasks = { social: false, achievedLogros: new Set() };
-                            this.wallet = null;
                         }
-                        console.log("Datos cargados:", { points: this.points, ship: this.ship, invites: this.invites, energy: this.energy, wallet: this.wallet });
+                        console.log("Datos cargados:", { points: this.points, ship: this.ship, invites: this.invites, energy: this.energy, wallet: this.wallet, username: this.username });
 
                         this.updateUI();
                         this.bindEvents();
@@ -324,6 +334,7 @@
                 const affiliateBtn = document.getElementById("affiliate-btn");
                 const communityBtn = document.getElementById("community-btn");
                 const shareBtn = document.getElementById("share-btn");
+                const soundToggle = document.getElementById("sound-toggle");
 
                 tapArea.addEventListener("click", () => this.tap());
                 tapArea.addEventListener("touchstart", (e) => { e.preventDefault(); this.tap(); });
@@ -337,6 +348,7 @@
                 communityBtn.addEventListener("touchstart", (e) => { e.preventDefault(); this.joinCommunity(); });
                 shareBtn.addEventListener("click", () => this.shareInfo());
                 shareBtn.addEventListener("touchstart", (e) => { e.preventDefault(); this.shareInfo(); });
+                soundToggle.addEventListener("click", () => this.toggleSound());
             },
 
             saveData() {
@@ -350,7 +362,8 @@
                         social: this.tasks.social,
                         achievedLogros: Array.from(this.tasks.achievedLogros)
                     },
-                    wallet: this.wallet
+                    wallet: this.wallet,
+                    username: this.username
                 };
                 localStorage.setItem(`tor21miner_${this.userId}`, JSON.stringify(data));
                 console.log("Datos guardados:", data);
@@ -392,10 +405,12 @@
                     this.updateUI();
                     this.showTapEffect(earned);
                     this.saveData();
-                    const tapSound = document.getElementById("tap-sound");
-                    tapSound.currentTime = 0;
-                    tapSound.volume = 0.3; // Volumen bajo
-                    tapSound.play().catch(e => console.log("Sonido bloqueado:", e));
+                    if (!this.soundMuted) {
+                        const tapSound = document.getElementById("tap-sound");
+                        tapSound.currentTime = 0;
+                        tapSound.volume = 0.3;
+                        tapSound.play().catch(e => console.log("Sonido bloqueado:", e));
+                    }
                 } else {
                     this.showAlert("¡Sin energía! Espera a que se recargue.");
                 }
@@ -485,11 +500,18 @@
                     this.showAlert(`Wallet ya registrada: ${this.wallet}`);
                     return;
                 }
+                const telegramUsername = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.username : null;
+                const inputUsername = prompt("Ingresa tu username de Telegram para verificar:");
+                if (!inputUsername || (telegramUsername && inputUsername !== telegramUsername)) {
+                    this.showAlert("El username no coincide con tu cuenta de Telegram.");
+                    return;
+                }
                 const newWallet = prompt("Ingresa tu dirección Polygon:");
                 if (newWallet) {
                     this.wallet = newWallet;
+                    this.username = inputUsername;
                     this.updateUI();
-                    this.showAlert("¡Wallet registrada para jugar!");
+                    this.showAlert("¡Wallet y usuario registrados!");
                     this.saveData();
                 }
             },
@@ -499,7 +521,7 @@
                 const inviteLink = `https://t.me/Torr21_bot?start=ref_${this.userId}`;
                 const inviteMessage = `¡Únete a Tor21Miner y mina puntos en Telegram! Usa mi enlace: ${inviteLink}`;
                 Telegram.WebApp.openLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(inviteMessage)}`);
-                this.invites += 1; // Simulación, en producción verificar con bot
+                this.invites += 1; // Simulación
                 this.updateUI();
                 this.saveData();
             },
@@ -557,6 +579,18 @@
                 }
                 this.updateUI();
                 this.saveData();
+            },
+
+            toggleSound() {
+                this.soundMuted = !this.soundMuted;
+                const soundToggle = document.getElementById("sound-toggle");
+                soundToggle.classList.toggle("muted", this.soundMuted);
+                const bgMusic = document.getElementById("bg-music");
+                if (this.soundMuted) {
+                    bgMusic.pause();
+                } else {
+                    bgMusic.play().catch(e => console.log("Música de fondo bloqueada:", e));
+                }
             }
         };
     </script>

@@ -166,60 +166,73 @@
         <button class="button" onclick="shareInfo()">Compartir Info</button>
     </div>
     <script>
-        Telegram.WebApp.ready();
-        Telegram.WebApp.expand();
+        console.log("Iniciando mini app...");
 
-        const userId = Telegram.WebApp.initDataUnsafe.user.id;
-        const username = Telegram.WebApp.initDataUnsafe.user.username || "Anonimo";
-
-        // Inicializar datos del juego desde localStorage
-        let gameData = JSON.parse(localStorage.getItem(`tor21miner_${userId}`)) || {
-            points: 0,
-            ship: "Basic",
-            invites: 0,
-            energy: 100,
-            maxEnergy: 100,
-            tasks: { social: false, share: false },
-            wallet: null
-        };
-
-        // Configuración inicial
-        let points = gameData.points;
-        let ship = gameData.ship;
-        let invites = gameData.invites;
-        let energy = gameData.energy;
-        let maxEnergy = gameData.maxEnergy;
-        let tasks = gameData.tasks;
-        let wallet = gameData.wallet;
+        // Declarar variables globales al inicio
+        let userId, username, gameData, points, ship, invites, energy, maxEnergy, tasks, wallet;
         const tapMultiplier = { "Basic": 1, "Bronze": 2, "Silver": 5, "Gold": 10 };
 
-        // Actualizar HUD y tareas
-        document.getElementById("points").innerHTML = `Puntos: ${points}`;
-        document.getElementById("ship").innerHTML = `Nave: ${ship}`;
-        document.getElementById("invites").innerHTML = `Invitados: ${invites}`;
-        document.getElementById("username").innerHTML = username;
-        document.getElementById("wallet").innerHTML = wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "No registrado";
-        document.getElementById("task-social").innerHTML = `Unirse a Comunidad: ${tasks.social ? '1/1' : '0/1'}`;
-        document.getElementById("task-share").innerHTML = `Compartir Info: ${tasks.share ? '1/1' : '0/1'}`;
-        updateShipImage();
-        updateEnergyBar();
+        // Función para inicializar la mini app
+        function initMiniApp() {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+            console.log("Telegram Web App inicializado");
+
+            userId = Telegram.WebApp.initDataUnsafe.user.id;
+            username = Telegram.WebApp.initDataUnsafe.user.username || "Anonimo";
+            console.log("Usuario:", userId, username);
+
+            // Cargar datos del juego desde localStorage
+            gameData = JSON.parse(localStorage.getItem(`tor21miner_${userId}`)) || {
+                points: 0,
+                ship: "Basic",
+                invites: 0,
+                energy: 100,
+                maxEnergy: 100,
+                tasks: { social: false, share: false },
+                wallet: null
+            };
+            console.log("Datos cargados:", gameData);
+
+            // Inicializar variables
+            points = gameData.points;
+            ship = gameData.ship;
+            invites = gameData.invites;
+            energy = gameData.energy;
+            maxEnergy = gameData.maxEnergy;
+            tasks = gameData.tasks;
+            wallet = gameData.wallet;
+
+            // Actualizar HUD y tareas
+            document.getElementById("points").innerHTML = `Puntos: ${points}`;
+            document.getElementById("ship").innerHTML = `Nave: ${ship}`;
+            document.getElementById("invites").innerHTML = `Invitados: ${invites}`;
+            document.getElementById("username").innerHTML = username;
+            document.getElementById("wallet").innerHTML = wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "No registrado";
+            document.getElementById("task-social").innerHTML = `Unirse a Comunidad: ${tasks.social ? '1/1' : '0/1'}`;
+            document.getElementById("task-share").innerHTML = `Compartir Info: ${tasks.share ? '1/1' : '0/1'}`;
+            updateShipImage();
+            updateEnergyBar();
+
+            // Recarga de energía
+            setInterval(() => {
+                if (energy < maxEnergy) {
+                    energy += 1;
+                    updateEnergyBar();
+                    saveGameData();
+                }
+            }, 60000);
+        }
 
         // Guardar datos en localStorage
         function saveGameData() {
             gameData = { points, ship, invites, energy, maxEnergy, tasks, wallet };
             localStorage.setItem(`tor21miner_${userId}`, JSON.stringify(gameData));
+            console.log("Datos guardados:", gameData);
         }
 
-        // Recarga de energía
-        setInterval(() => {
-            if (energy < maxEnergy) {
-                energy += 1;
-                updateEnergyBar();
-                saveGameData();
-            }
-        }, 60000);
-
         function tap() {
+            console.log("Botón Tap presionado");
             if (!wallet) {
                 Telegram.WebApp.showAlert("¡Registra tu wallet para jugar!");
                 return;
@@ -253,6 +266,7 @@
         }
 
         function upgradeShip() {
+            console.log("Botón Mejorar Nave presionado");
             if (!wallet) {
                 Telegram.WebApp.showAlert("¡Registra tu wallet para jugar!");
                 return;
@@ -286,6 +300,7 @@
         }
 
         function connectWallet() {
+            console.log("Botón Registrar Wallet presionado");
             if (wallet) {
                 Telegram.WebApp.showAlert(`Wallet ya registrada para el juego: ${wallet}`);
                 return;
@@ -311,19 +326,22 @@
         }
 
         function buyTokens() {
+            console.log("Botón Comprar 2RT presionado");
             Telegram.WebApp.sendData(`/buy_menu ${userId}`);
             Telegram.WebApp.showAlert("Redirigiendo al bot para comprar 2RT...");
         }
 
         function showAffiliate() {
+            console.log("Botón Afiliados presionado");
             Telegram.WebApp.sendData(`/affiliate ${userId}`);
             Telegram.WebApp.showAlert("Consulta tu enlace de afiliado en el chat del bot.");
-            invites += 1; // Simulación (podrías verificar con el bot en producción)
+            invites += 1;
             document.getElementById("invites").innerHTML = `Invitados: ${invites}`;
             saveGameData();
         }
 
         function joinCommunity() {
+            console.log("Botón Unirse a Comunidad presionado");
             if (tasks.social) {
                 Telegram.WebApp.showAlert("¡Ya te uniste a la comunidad!");
                 return;
@@ -338,6 +356,7 @@
         }
 
         function shareInfo() {
+            console.log("Botón Compartir Info presionado");
             if (tasks.share) {
                 Telegram.WebApp.showAlert("¡Ya compartiste la info!");
                 return;
@@ -354,6 +373,9 @@
             Telegram.WebApp.showAlert("¡Info compartida! +5,000 puntos.");
             saveGameData();
         }
+
+        // Iniciar la mini app
+        initMiniApp();
     </script>
 </body>
 </html>

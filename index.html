@@ -173,6 +173,12 @@
             let userId, username, gameData, points, ship, invites, energy, maxEnergy, tasks, wallet;
             const tapMultiplier = { "Basic": 1, "Bronze": 2, "Silver": 5, "Gold": 10 };
 
+            // Verificar si es un teléfono móvil
+            function isMobileDevice() {
+                const userAgent = navigator.userAgent.toLowerCase();
+                return /mobile|android|iphone|ipod/.test(userAgent) && !/tablet|ipad/.test(userAgent);
+            }
+
             // Inicializar la mini app
             function initMiniApp() {
                 try {
@@ -183,8 +189,15 @@
 
                     // Verificar si estamos en Telegram
                     if (!Telegram.WebApp.initDataUnsafe || !Telegram.WebApp.initDataUnsafe.user) {
-                        document.body.innerHTML = "<h1>Esta aplicación solo funciona en Telegram</h1>";
+                        document.body.innerHTML = "<h1>Esta aplicación solo funciona en Telegram desde un teléfono móvil</h1>";
                         console.error("No se está ejecutando en Telegram");
+                        return;
+                    }
+
+                    // Verificar si es un teléfono móvil
+                    if (!isMobileDevice()) {
+                        document.body.innerHTML = "<h1>Esta aplicación solo funciona en teléfonos móviles con Telegram</h1>";
+                        console.error("Dispositivo no es un teléfono móvil");
                         return;
                     }
 
@@ -236,7 +249,7 @@
                     }, 60000);
                 } catch (e) {
                     console.error("Error en initMiniApp:", e);
-                    Telegram.WebApp.showAlert("Error al iniciar la mini app: " + e.message);
+                    Telegram.WebApp.showAlert("Error al iniciar: " + e.message);
                 }
             }
 

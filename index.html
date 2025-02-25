@@ -26,7 +26,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(15, 12, 41, 0.9);
+            background: #0f0c29; /* Fondo sólido */
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -51,7 +51,11 @@
             width: 0;
             height: 100%;
             background: #00ff99;
-            transition: width 2s ease-in-out;
+            animation: load 3s ease-in-out forwards; /* 3 segundos */
+        }
+        @keyframes load {
+            0% { width: 0; }
+            100% { width: 100%; }
         }
         #stars {
             position: absolute;
@@ -145,30 +149,7 @@
             background: #00ff99;
             transition: width 0.5s;
         }
-        #tasks {
-            position: absolute;
-            top: 80px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 8px;
-            border-radius: 10px;
-            font-size: 14px;
-            max-width: 150px;
-            z-index: 10;
-        }
-        #ranking {
-            position: absolute;
-            top: 80px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 8px;
-            border-radius: 10px;
-            font-size: 14px;
-            max-width: 150px;
-            z-index: 10;
-        }
     </style>
-    <script src="https://telegram.org/js/telegram-web-app.js" integrity="sha384-9s4WicOQJ2TZA56CkMhQUr5YVzflVvIdo0oAEEYq8y0YQlwF07fOvwl+FWgYfMpqW" crossorigin="anonymous"></script>
 </head>
 <body>
     <div id="loading-screen">
@@ -205,6 +186,21 @@
         <button class="button" id="share-btn">Compartir Info</button>
     </div>
     <script>
+        // Cargar el script de Telegram dinámicamente
+        const script = document.createElement('script');
+        script.src = "https://telegram.org/js/telegram-web-app.js";
+        script.integrity = "sha384-9s4WicOQJ2TZA56CkMhQUr5YVzflVvIdo0oAEEYq8y0YQlwF07fOvwl+FWgYfMpqW";
+        script.crossOrigin = "anonymous";
+        script.onload = () => {
+            console.log("Script de Telegram cargado");
+            Tor21Miner.init();
+        };
+        script.onerror = () => {
+            console.error("Error al cargar el script de Telegram");
+            document.getElementById("loading-screen").innerHTML = "<h1>Error al cargar Telegram Web App</h1>";
+        };
+        document.head.appendChild(script);
+
         const Tor21Miner = {
             userId: null,
             username: null,
@@ -223,9 +219,6 @@
                     Telegram.WebApp.ready();
                     Telegram.WebApp.expand();
                     console.log("Telegram Web App listo");
-
-                    const loadingFill = document.getElementById("loading-fill");
-                    loadingFill.style.width = "100%";
 
                     setTimeout(() => {
                         this.userId = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.id : "unknown";
@@ -259,7 +252,7 @@
                                 console.log("Energía recargada:", this.energy);
                             }
                         }, 60000);
-                    }, 2000);
+                    }, 3000); // 3 segundos para la carga
                 } catch (e) {
                     console.error("Error al inicializar:", e);
                     this.showAlert("Error al iniciar el juego: " + e.message);
@@ -321,8 +314,8 @@
                 try {
                     Telegram.WebApp.showAlert(message);
                 } catch (e) {
-                    console.error("showAlert no soportado, usando alert nativo:", e);
-                    alert(message);
+                    console.error("showAlert no soportado:", e);
+                    alert(message); // Fallback a alert nativo
                 }
             },
 
@@ -464,8 +457,6 @@
                 this.saveData();
             }
         };
-
-        Tor21Miner.init();
     </script>
 </body>
 </html>

@@ -168,7 +168,7 @@
             z-index: 10;
         }
     </style>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js" integrity="sha384-9s4WicOQJ2TZA56CkMhQUr5YVzflVvIdo0oAEEYq8y0YQlwF07fOvwl+FWgYfMpqW" crossorigin="anonymous"></script>
 </head>
 <body>
     <div id="loading-screen">
@@ -205,7 +205,6 @@
         <button class="button" id="share-btn">Compartir Info</button>
     </div>
     <script>
-        // Objeto principal del juego
         const Tor21Miner = {
             userId: null,
             username: null,
@@ -218,7 +217,6 @@
             wallet: null,
             tapMultiplier: { "Basic": 1, "Bronze": 2, "Silver": 5, "Gold": 10 },
 
-            // Inicializar el juego
             init() {
                 console.log("Inicializando Tor21Miner...");
                 try {
@@ -226,11 +224,9 @@
                     Telegram.WebApp.expand();
                     console.log("Telegram Web App listo");
 
-                    // Mostrar pantalla de carga
                     const loadingFill = document.getElementById("loading-fill");
                     loadingFill.style.width = "100%";
 
-                    // Cargar datos después de 2 segundos
                     setTimeout(() => {
                         this.userId = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.id : "unknown";
                         this.username = Telegram.WebApp.initDataUnsafe.user ? (Telegram.WebApp.initDataUnsafe.user.username || "Anonimo") : "Anonimo";
@@ -253,10 +249,8 @@
                         this.bindEvents();
                         console.log("Eventos vinculados");
 
-                        // Ocultar pantalla de carga
                         document.getElementById("loading-screen").style.display = "none";
 
-                        // Recarga de energía
                         setInterval(() => {
                             if (this.energy < this.maxEnergy) {
                                 this.energy += 1;
@@ -265,14 +259,13 @@
                                 console.log("Energía recargada:", this.energy);
                             }
                         }, 60000);
-                    }, 2000); // 2 segundos de carga
+                    }, 2000);
                 } catch (e) {
                     console.error("Error al inicializar:", e);
-                    Telegram.WebApp.showAlert("Error al iniciar el juego: " + e.message);
+                    this.showAlert("Error al iniciar el juego: " + e.message);
                 }
             },
 
-            // Vincular eventos
             bindEvents() {
                 const tapArea = document.getElementById("tap-area");
                 const upgradeBtn = document.getElementById("upgrade-btn");
@@ -298,7 +291,6 @@
                 shareBtn.addEventListener("touchstart", (e) => { e.preventDefault(); this.shareInfo(); });
             },
 
-            // Guardar datos en localStorage
             saveData() {
                 const data = {
                     points: this.points,
@@ -313,7 +305,6 @@
                 console.log("Datos guardados:", data);
             },
 
-            // Actualizar UI
             updateUI() {
                 document.getElementById("points").innerHTML = `Puntos: ${this.points}`;
                 document.getElementById("ship").innerHTML = `Nave: ${this.ship}`;
@@ -326,10 +317,19 @@
                 this.updateEnergyBar();
             },
 
+            showAlert(message) {
+                try {
+                    Telegram.WebApp.showAlert(message);
+                } catch (e) {
+                    console.error("showAlert no soportado, usando alert nativo:", e);
+                    alert(message);
+                }
+            },
+
             tap() {
                 console.log("Tap ejecutado");
                 if (!this.wallet) {
-                    Telegram.WebApp.showAlert("¡Registra tu wallet para jugar!");
+                    this.showAlert("¡Registra tu wallet para jugar!");
                     return;
                 }
                 if (this.energy > 0) {
@@ -337,10 +337,10 @@
                     const earned = this.tapMultiplier[this.ship];
                     this.points += earned;
                     this.updateUI();
-                    Telegram.WebApp.showAlert(`¡Minaste ${earned} puntos!`);
+                    this.showAlert(`¡Minaste ${earned} puntos!`);
                     this.saveData();
                 } else {
-                    Telegram.WebApp.showAlert("¡Sin energía! Espera a que se recargue.");
+                    this.showAlert("¡Sin energía! Espera a que se recargue.");
                 }
             },
 
@@ -362,30 +362,30 @@
             upgradeShip() {
                 console.log("Mejorar Nave ejecutado");
                 if (!this.wallet) {
-                    Telegram.WebApp.showAlert("¡Registra tu wallet para jugar!");
+                    this.showAlert("¡Registra tu wallet para jugar!");
                     return;
                 }
                 if (this.ship === "Basic" && this.points >= 5000) {
                     this.ship = "Bronze";
                     this.points -= 5000;
-                    Telegram.WebApp.showAlert("¡Nave mejorada a Bronce! +2 puntos por tap.");
+                    this.showAlert("¡Nave mejorada a Bronce! +2 puntos por tap.");
                 } else if (this.ship === "Bronze" && this.points >= 20000 && this.invites >= 5) {
                     this.ship = "Silver";
                     this.points -= 20000;
-                    Telegram.WebApp.showAlert("¡Nave mejorada a Plata! +5 puntos por tap.");
+                    this.showAlert("¡Nave mejorada a Plata! +5 puntos por tap.");
                 } else if (this.ship === "Silver" && this.points >= 50000 && this.invites >= 10) {
                     this.ship = "Gold";
                     this.points -= 50000;
-                    Telegram.WebApp.showAlert("¡Nave mejorada a Oro! +10 puntos por tap.");
+                    this.showAlert("¡Nave mejorada a Oro! +10 puntos por tap.");
                 } else if (this.ship === "Gold" && this.points >= 100000 && this.invites >= 15) {
-                    Telegram.WebApp.showAlert("¡Ya tienes la mejor nave posible!");
+                    this.showAlert("¡Ya tienes la mejor nave posible!");
                 } else {
                     let req = "";
                     if (this.ship === "Basic") req = "5,000 puntos";
                     else if (this.ship === "Bronze") req = "20,000 puntos y 5 invitados";
                     else if (this.ship === "Silver") req = "50,000 puntos y 10 invitados";
                     else if (this.ship === "Gold") req = "100,000 puntos y 15 invitados";
-                    Telegram.WebApp.showAlert(`Necesitas: ${req}`);
+                    this.showAlert(`Necesitas: ${req}`);
                 }
                 this.updateUI();
                 this.saveData();
@@ -394,7 +394,7 @@
             connectWallet() {
                 console.log("Registrar Wallet ejecutado");
                 if (this.wallet) {
-                    Telegram.WebApp.showAlert(`Wallet ya registrada: ${this.wallet}`);
+                    this.showAlert(`Wallet ya registrada: ${this.wallet}`);
                     return;
                 }
                 Telegram.WebApp.showPopup({
@@ -410,7 +410,7 @@
                         if (newWallet) {
                             this.wallet = newWallet;
                             this.updateUI();
-                            Telegram.WebApp.showAlert("¡Wallet registrada para jugar!");
+                            this.showAlert("¡Wallet registrada para jugar!");
                             this.saveData();
                         }
                     }
@@ -420,13 +420,13 @@
             buyTokens() {
                 console.log("Comprar 2RT ejecutado");
                 Telegram.WebApp.sendData(`/buy_menu ${this.userId}`);
-                Telegram.WebApp.showAlert("Redirigiendo al bot para comprar 2RT...");
+                this.showAlert("Redirigiendo al bot para comprar 2RT...");
             },
 
             showAffiliate() {
                 console.log("Afiliados ejecutado");
                 Telegram.WebApp.sendData(`/affiliate ${this.userId}`);
-                Telegram.WebApp.showAlert("Consulta tu enlace de afiliado en el chat del bot.");
+                this.showAlert("Consulta tu enlace de afiliado en el chat del bot.");
                 this.invites += 1;
                 this.updateUI();
                 this.saveData();
@@ -435,21 +435,21 @@
             joinCommunity() {
                 console.log("Unirse a Comunidad ejecutado");
                 if (this.tasks.social) {
-                    Telegram.WebApp.showAlert("¡Ya te uniste a la comunidad!");
+                    this.showAlert("¡Ya te uniste a la comunidad!");
                     return;
                 }
                 window.open("https://t.me/torr21_2RT", "_blank");
                 this.tasks.social = true;
                 this.points += 5000;
                 this.updateUI();
-                Telegram.WebApp.showAlert("¡Unido a la comunidad! +5,000 puntos.");
+                this.showAlert("¡Unido a la comunidad! +5,000 puntos.");
                 this.saveData();
             },
 
             shareInfo() {
                 console.log("Compartir Info ejecutado");
                 if (this.tasks.share) {
-                    Telegram.WebApp.showAlert("¡Ya compartiste la info!");
+                    this.showAlert("¡Ya compartiste la info!");
                     return;
                 }
                 Telegram.WebApp.showPopup({
@@ -460,12 +460,11 @@
                 this.tasks.share = true;
                 this.points += 5000;
                 this.updateUI();
-                Telegram.WebApp.showAlert("¡Info compartida! +5,000 puntos.");
+                this.showAlert("¡Info compartida! +5,000 puntos.");
                 this.saveData();
             }
         };
 
-        // Iniciar el juego
         Tor21Miner.init();
     </script>
 </body>

@@ -105,14 +105,14 @@
         .tap-effect {
             position: absolute;
             color: #00ff99;
-            font-size: 20px;
+            font-size: 30px; /* Más grande */
             font-weight: bold;
             pointer-events: none;
             animation: float 1s ease-out forwards;
         }
         @keyframes float {
-            0% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-50px); }
+            0% { opacity: 1; transform: translate(0, 0); }
+            100% { opacity: 0; transform: translate(var(--x), var(--y)); }
         }
         #ship-area {
             position: absolute;
@@ -174,6 +174,10 @@
             z-index: 10;
             text-align: left;
         }
+        #tasks.available::before {
+            content: "★ "; /* Indicador de logro disponible */
+            color: #00ff99;
+        }
         #ranking {
             position: absolute;
             top: 80px;
@@ -222,6 +226,8 @@
         <button class="button" id="community-btn">Comunidad</button>
         <button class="button" id="share-btn">Compartir Logro</button>
     </div>
+    <audio id="tap-sound" src="https://cdn.pixabay.com/audio/2023/03/15/tap-sound.mp3" preload="auto"></audio>
+    <audio id="bg-music" src="https://cdn.pixabay.com/audio/2023/03/15/space-theme.mp3" loop preload="auto" volume="0.1"></audio>
     <script>
         const script = document.createElement('script');
         script.src = "https://telegram.org/js/telegram-web-app.js";
@@ -248,7 +254,7 @@
             invites: 0,
             energy: 100,
             maxEnergy: 100,
-            tasks: { social: false, shareCount: 0 },
+            tasks: { social: false, achievedLogros: new Set() }, // Usar Set para logros únicos
             wallet: null,
             tapMultiplier: { "Basic": 1, "Bronze": 2, "Silver": 5, "Gold": 10 },
 
@@ -259,29 +265,30 @@
                     Telegram.WebApp.expand();
                     console.log("Telegram Web App listo");
 
+                    // Resetear datos
+                    localStorage.removeItem(`tor21miner_${this.userId}`);
+                    this.points = 0;
+                    this.ship = "Basic";
+                    this.invites = 0;
+                    this.energy = 100;
+                    this.tasks = { social: false, achievedLogros: new Set() };
+                    this.wallet = null;
+
                     setTimeout(() => {
                         this.userId = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.id : "unknown";
-                        this.username = Telegram.WebApp.initDataUnsafe.user ? (Telegram.WebApp.initDataUnsafe.user.username || "Anonimo") : "Anonimo";
+                        this.username = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.username : "Anonimo";
                         console.log("Usuario:", this.userId, this.username);
-
-                        const savedData = localStorage.getItem(`tor21miner_${this.userId}`);
-                        if (savedData) {
-                            const data = JSON.parse(savedData);
-                            this.points = data.points || 0;
-                            this.ship = data.ship || "Basic";
-                            this.invites = data.invites || 0;
-                            this.energy = data.energy || 100;
-                            this.maxEnergy = data.maxEnergy || 100;
-                            this.tasks = data.tasks || { social: false, shareCount: 0 };
-                            this.wallet = data.wallet || null;
-                        }
-                        console.log("Datos cargados:", { points: this.points, ship: this.ship, invites: this.invites, energy: this.energy, wallet: this.wallet });
 
                         this.updateUI();
                         this.bindEvents();
                         console.log("Eventos vinculados");
 
                         document.getElementById("loading-screen").style.display = "none";
+
+                        // Iniciar música de fondo
+                        const bgMusic = document.getElementById("bg-music");
+                        bgMusic.volume = 0.1; // Volumen bajo
+                        bgMusic.play().catch(e => console.log("Música de fondo bloqueada:", e));
 
                         setInterval(() => {
                             if (this.energy < this.maxEnergy) {
@@ -330,7 +337,10 @@
                     invites: this.invites,
                     energy: this.energy,
                     maxEnergy: this.maxEnergy,
-                    tasks: this.tasks,
+                    tasks: {
+                        social: this.tasks.social,
+                        achievedLogros: Array.from(this.tasks.achievedLogros) // Convertir Set a Array para JSON
+                    },
                     wallet: this.wallet
                 };
                 localStorage.setItem(`tor21miner_${this.userId}`, JSON.stringify(data));
@@ -344,7 +354,10 @@
                 document.getElementById("username").innerHTML = this.username;
                 document.getElementById("wallet").innerHTML = this.wallet ? `${this.wallet.slice(0, 6)}...${this.wallet.slice(-4)}` : "No registrado";
                 document.getElementById("task-social").innerHTML = `Unirse a Comunidad: ${this.tasks.social ? '1/1' : '0/1'}`;
-                document.getElementById("task-share").innerHTML = `Compartir Logro: ${this.tasks.shareCount}`;
+                const tasksDiv = document.getElementById("tasks");
+                tasksDiv.classList.toggle("available", this.hasShareableLogro());
+                document.getElementById("task-share").innerHTML = `Compartir Logro: ${this.tasks.achievedLogros.size}`;
+                document.getElementById("wallet-btn").textContent = this.wallet ? "Ud. ya está registrado" : "Regístrate";
                 this.updateShipImage();
                 this.updateEnergyBar();
             },
@@ -370,6 +383,9 @@
                     this.updateUI();
                     this.showTapEffect(earned);
                     this.saveData();
+                    const tapSound = document.getElementById("tap-sound");
+                    tapSound.currentTime = 0;
+                    tapSound.play().catch(e => console.log("Sonido bloqueado:", e));
                 } else {
                     this.showAlert("¡Sin energía! Espera a que se recargue.");
                 }
@@ -377,13 +393,19 @@
 
             showTapEffect(earned) {
                 const tapArea = document.getElementById("tap-area");
-                const effect = document.createElement("div");
-                effect.className = "tap-effect";
-                effect.textContent = `+${earned}`;
-                effect.style.left = `${Math.random() * 150 + 25}px`; // Posición aleatoria dentro del área
-                effect.style.top = `${Math.random() * 150 + 25}px`;
-                tapArea.appendChild(effect);
-                setTimeout(() => effect.remove(), 1000); // Eliminar después de la animación
+                for (let i = 0; i < 3; i++) { // 3 efectos por tap
+                    const effect = document.createElement("div");
+                    effect.className = "tap-effect";
+                    effect.textContent = `+${earned}`;
+                    const angle = Math.random() * 2 * Math.PI;
+                    const distance = 50 + Math.random() * 50;
+                    effect.style.setProperty('--x', `${Math.cos(angle) * distance}px`);
+                    effect.style.setProperty('--y', `${Math.sin(angle) * distance}px`);
+                    effect.style.left = "50%";
+                    effect.style.top = "50%";
+                    tapArea.appendChild(effect);
+                    setTimeout(() => effect.remove(), 1000);
+                }
             },
 
             updateEnergyBar() {
@@ -437,13 +459,12 @@
                             this.saveData();
                         }
                     });
-                } else if (this.ship === "Gold") {
-                    this.showAlert("¡Ya tienes la mejor nave posible!");
                 } else {
                     let req = "";
                     if (this.ship === "Basic") req = "1,000 puntos";
                     else if (this.ship === "Bronze") req = "5,000 puntos y 3 invitados";
                     else if (this.ship === "Silver") req = "10,000 puntos y 5 invitados";
+                    else if (this.ship === "Gold") req = "¡Ya tienes la mejor nave!";
                     this.showAlert(`Necesitas: ${req}`);
                 }
             },
@@ -473,7 +494,7 @@
                 const inviteLink = `https://t.me/Torr21_bot?start=ref_${this.userId}`;
                 const inviteMessage = `¡Únete a Tor21Miner y mina puntos en Telegram! Usa mi enlace: ${inviteLink}`;
                 Telegram.WebApp.openLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(inviteMessage)}`);
-                this.invites += 1;
+                this.invites += 1; // Simulación, en producción verificar con el bot
                 this.updateUI();
                 this.saveData();
             },
@@ -490,19 +511,45 @@
                 }
             },
 
+            hasShareableLogro() {
+                return (this.points >= 10000 && !this.tasks.achievedLogros.has("10kPoints")) ||
+                       (this.ship === "Bronze" && !this.tasks.achievedLogros.has("BronzeShip")) ||
+                       (this.ship === "Silver" && !this.tasks.achievedLogros.has("SilverShip")) ||
+                       (this.ship === "Gold" && !this.tasks.achievedLogros.has("GoldShip")) ||
+                       (this.invites >= 5 && !this.tasks.achievedLogros.has("5Invites"));
+            },
+
             shareInfo() {
                 console.log("Compartir Logro ejecutado");
                 let logro = "";
-                if (this.points >= 10000) logro = "¡Alcanzadé 10,000 puntos en Tor21Miner!";
-                else if (this.ship !== "Basic") logro = `¡Actualicé mi nave a ${this.ship} en Tor21Miner!`;
-                else if (this.invites >= 5) logro = "¡Invité a 5 amigos a Tor21Miner!";
-                else logro = "¡Estoy minando en Tor21Miner!";
+                let logroKey = "";
+                if (this.points >= 10000 && !this.tasks.achievedLogros.has("10kPoints")) {
+                    logro = "¡Alcanzé 10,000 puntos en Tor21Miner!";
+                    logroKey = "10kPoints";
+                } else if (this.ship === "Bronze" && !this.tasks.achievedLogros.has("BronzeShip")) {
+                    logro = "¡Actualicé mi nave a Bronze en Tor21Miner!";
+                    logroKey = "BronzeShip";
+                } else if (this.ship === "Silver" && !this.tasks.achievedLogros.has("SilverShip")) {
+                    logro = "¡Actualicé mi nave a Silver en Tor21Miner!";
+                    logroKey = "SilverShip";
+                } else if (this.ship === "Gold" && !this.tasks.achievedLogros.has("GoldShip")) {
+                    logro = "¡Actualicé mi nave a Gold en Tor21Miner!";
+                    logroKey = "GoldShip";
+                } else if (this.invites >= 5 && !this.tasks.achievedLogros.has("5Invites")) {
+                    logro = "¡Invité a 5 amigos a Tor21Miner!";
+                    logroKey = "5Invites";
+                } else {
+                    this.showAlert("No hay nuevos logros para compartir.");
+                    return;
+                }
 
                 const shareLink = `https://t.me/Torr21_bot?start=ref_${this.userId}`;
                 Telegram.WebApp.openLink(`https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(logro)}`);
-                this.tasks.shareCount += 1;
-                this.points += 50;
-                this.showAlert("¡Logro compartido! +50 puntos.");
+                if (!this.tasks.achievedLogros.has(logroKey)) {
+                    this.tasks.achievedLogros.add(logroKey);
+                    this.points += 50;
+                    this.showAlert("¡Logro compartido! +50 puntos.");
+                }
                 this.updateUI();
                 this.saveData();
             }

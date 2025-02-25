@@ -189,17 +189,20 @@
         // Cargar el script de Telegram dinámicamente
         const script = document.createElement('script');
         script.src = "https://telegram.org/js/telegram-web-app.js";
-        script.integrity = "sha384-9s4WicOQJ2TZA56CkMhQUr5YVzflVvIdo0oAEEYq8y0YQlwF07fOvwl+FWgYfMpqW";
-        script.crossOrigin = "anonymous";
         script.onload = () => {
             console.log("Script de Telegram cargado");
-            Tor21Miner.init();
+            if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+                Tor21Miner.init();
+            } else {
+                console.error("Telegram no está definido tras cargar el script");
+                document.getElementById("loading-screen").innerHTML = "<h1>Error: Telegram Web App no disponible</h1>";
+            }
         };
         script.onerror = () => {
             console.error("Error al cargar el script de Telegram");
             document.getElementById("loading-screen").innerHTML = "<h1>Error al cargar Telegram Web App</h1>";
         };
-        document.head.appendChild(script);
+        document.body.appendChild(script);
 
         const Tor21Miner = {
             userId: null,

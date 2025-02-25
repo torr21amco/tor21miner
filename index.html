@@ -149,6 +149,30 @@
             background: #00ff99;
             transition: width 0.5s;
         }
+        #tasks {
+            position: absolute;
+            top: 80px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 150px;
+            z-index: 10;
+            text-align: left; /* Restaurar alineación */
+        }
+        #ranking {
+            position: absolute;
+            top: 80px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 150px;
+            z-index: 10;
+            text-align: left; /* Restaurar alineación */
+        }
     </style>
 </head>
 <body>
@@ -172,7 +196,7 @@
     </div>
     <div id="ranking">
         <h3>Top Mineros</h3>
-        <p id="top-list">1. MineroX: 100,000<br>2. AstroY: 80,000<br>3. SpaceZ: 50,000</p>
+        <p id="top-list">Minero: 100,000<br>Astro: 80,000<br>Space: 50,000</p>
     </div>
     <div id="tap-area"></div>
     <div id="ship-area"></div>
@@ -258,7 +282,7 @@
                     }, 3000); // 3 segundos para la carga
                 } catch (e) {
                     console.error("Error al inicializar:", e);
-                    this.showAlert("Error al iniciar el juego: " + e.message);
+                    alert("Error al iniciar el juego: " + e.message); // Fallback temporal
                 }
             },
 
@@ -314,12 +338,7 @@
             },
 
             showAlert(message) {
-                try {
-                    Telegram.WebApp.showAlert(message);
-                } catch (e) {
-                    console.error("showAlert no soportado:", e);
-                    alert(message); // Fallback a alert nativo
-                }
+                Telegram.WebApp.showAlert(message); // Solo Telegram alert, sin fallback a alert nativo
             },
 
             tap() {
@@ -393,30 +412,19 @@
                     this.showAlert(`Wallet ya registrada: ${this.wallet}`);
                     return;
                 }
-                Telegram.WebApp.showPopup({
-                    title: "Registrar Wallet para Jugar",
-                    message: "Ingresa tu dirección Polygon:",
-                    buttons: [
-                        { id: "submit", type: "default", text: "Enviar" },
-                        { type: "cancel", text: "Cancelar" }
-                    ]
-                }, (buttonId) => {
-                    if (buttonId === "submit") {
-                        const newWallet = prompt("Dirección Polygon:");
-                        if (newWallet) {
-                            this.wallet = newWallet;
-                            this.updateUI();
-                            this.showAlert("¡Wallet registrada para jugar!");
-                            this.saveData();
-                        }
-                    }
-                });
+                const newWallet = prompt("Ingresa tu dirección Polygon:");
+                if (newWallet) {
+                    this.wallet = newWallet;
+                    this.updateUI();
+                    this.showAlert("¡Wallet registrada para jugar!");
+                    this.saveData();
+                }
             },
 
             buyTokens() {
                 console.log("Comprar 2RT ejecutado");
                 Telegram.WebApp.sendData(`/buy_menu ${this.userId}`);
-                this.showAlert("Redirigiendo al bot para comprar 2RT...");
+                // Sin mensaje, solo redirige al bot
             },
 
             showAffiliate() {
@@ -448,11 +456,6 @@
                     this.showAlert("¡Ya compartiste la info!");
                     return;
                 }
-                Telegram.WebApp.showPopup({
-                    title: "Compartir Info",
-                    message: "Comparte Tor21Miner con tus amigos:",
-                    buttons: [{ type: "ok", text: "OK" }]
-                });
                 this.tasks.share = true;
                 this.points += 5000;
                 this.updateUI();

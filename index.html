@@ -73,7 +73,7 @@
         }
         #hud {
             position: absolute;
-            top: 40px; /* Espacio para el logo */
+            top: 40px;
             left: 10px;
             right: 10px;
             display: flex;
@@ -259,7 +259,6 @@
             background-size: contain;
             margin-right: 5px;
         }
-        /* Ocultar pie de Netlify */
         footer, .netlify-footer { display: none !important; }
     </style>
 </head>
@@ -354,16 +353,7 @@
                         this.userId = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.id : "unknown";
                         this.username = Telegram.WebApp.initDataUnsafe.user && Telegram.WebApp.initDataUnsafe.user.username ? Telegram.WebApp.initDataUnsafe.user.username : "Anonimo";
 
-                        // Resetear a 0 (solo esta vez)
-                        localStorage.removeItem(`tor21miner_${this.userId}`);
-                        this.points = 0;
-                        this.ship = "Basic";
-                        this.invites = 0;
-                        this.energy = 100;
-                        this.energyTimestamp = Date.now();
-                        this.tasks = { social: false, achievedLogros: new Set() };
-                        this.wallet = null;
-
+                        // Cargar datos guardados o inicializar si no existen
                         const savedData = localStorage.getItem(`tor21miner_${this.userId}`);
                         if (savedData) {
                             const data = JSON.parse(savedData);
@@ -383,6 +373,16 @@
                             const minutesPassed = Math.floor((now - this.energyTimestamp) / 60000);
                             this.energy = Math.min(this.maxEnergy, this.energy + minutesPassed);
                             this.energyTimestamp = now;
+                        } else {
+                            // Inicializar datos solo si no hay datos guardados
+                            this.points = 0;
+                            this.ship = "Basic";
+                            this.invites = 0;
+                            this.energy = 100;
+                            this.energyTimestamp = Date.now();
+                            this.tasks = { social: false, achievedLogros: new Set() };
+                            this.wallet = null;
+                            this.saveData(); // Guardar datos iniciales
                         }
                         console.log("Datos cargados:", { points: this.points, ship: this.ship, invites: this.invites, energy: this.energy, wallet: this.wallet, username: this.username });
 
@@ -613,7 +613,6 @@
                 const inviteLink = `https://t.me/Torr21_bot?start=ref_${this.userId}`;
                 const inviteMessage = `¡Únete a Tor21Miner y mina puntos en Telegram! Usa mi enlace: ${inviteLink}`;
                 Telegram.WebApp.openLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(inviteMessage)}`);
-                // No incrementar localmente, el bot lo manejará
                 this.updateUI();
                 this.saveData();
             },

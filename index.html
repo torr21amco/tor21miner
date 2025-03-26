@@ -372,9 +372,12 @@
                 // Calcular la energía basada en el tiempo transcurrido desde el último guardado
                 const now = Date.now();
                 const minutesPassed = Math.floor((now - this.energyTimestamp) / 60000);
-                this.energy = Math.min(this.maxEnergy, this.energy + minutesPassed);
+                console.log(`Datos cargados - Energía: ${this.energy}, Timestamp: ${this.energyTimestamp}, Minutos transcurridos: ${minutesPassed}`);
+                if (this.energy < this.maxEnergy) {
+                    this.energy = Math.min(this.maxEnergy, this.energy + minutesPassed);
+                }
                 this.energyTimestamp = now; // Actualizar el timestamp al momento actual
-                console.log(`Energía al cargar: ${this.energy}, minutos transcurridos: ${minutesPassed}`);
+                console.log(`Energía calculada al cargar: ${this.energy}, Nuevo Timestamp: ${this.energyTimestamp}`);
             } else {
                 // Inicializar datos solo si no hay datos guardados
                 this.points = 0;
@@ -385,6 +388,7 @@
                 this.tasks = { social: false, achievedLogros: new Set() };
                 this.wallet = null;
                 this.saveData(); // Guardar datos iniciales
+                console.log("Datos inicializados - Energía: 100");
             }
 
             this.updateUI();
@@ -406,7 +410,7 @@
                     this.energyTimestamp = now;
                     this.updateEnergyBar();
                     this.saveData();
-                    console.log("Energía recargada:", this.energy);
+                    console.log("Energía recargada mientras la app está abierta:", this.energy);
                 }
             }, 60000);
         }, 3000);
@@ -499,6 +503,7 @@
         this.updateUI();
         this.showTapEffect(earned);
         this.saveData(); // Guardar inmediatamente después de cada tap
+        console.log(`Energía después del tap: ${this.energy}, Timestamp: ${this.energyTimestamp}`);
         if (!this.soundMuted) {
             const tapSound = document.getElementById("tap-sound");
             tapSound.currentTime = 0;
@@ -506,7 +511,10 @@
             tapSound.play().catch(e => console.log("Sonido bloqueado:", e));
         }
     } else {
+        this.energyTimestamp = Date.now(); // Actualizar el timestamp incluso si la energía es 0
+        this.saveData(); // Guardar el estado cuando la energía está en 0
         this.showAlert("¡Sin energía! Espera a que se recargue.");
+        console.log(`Energía agotada: ${this.energy}, Timestamp al agotarse: ${this.energyTimestamp}`);
     }
 },
 

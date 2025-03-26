@@ -343,76 +343,78 @@
             soundMuted: false,
 
             init() {
-                console.log("Inicializando Tor21Miner...");
-                try {
-                    Telegram.WebApp.ready();
-                    Telegram.WebApp.expand();
-                    console.log("Telegram Web App listo");
+    console.log("Inicializando Tor21Miner...");
+    try {
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+        console.log("Telegram Web App listo");
 
-                    setTimeout(() => {
-                        this.userId = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.id : "unknown";
-                        this.username = Telegram.WebApp.initDataUnsafe.user && Telegram.WebApp.initDataUnsafe.user.username ? Telegram.WebApp.initDataUnsafe.user.username : "Anonimo";
+        setTimeout(() => {
+            this.userId = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.id : "unknown";
+            this.username = Telegram.WebApp.initDataUnsafe.user && Telegram.WebApp.initDataUnsafe.user.username ? Telegram.WebApp.initDataUnsafe.user.username : "Anonimo";
 
-                        // Cargar datos guardados o inicializar si no existen
-                        const savedData = localStorage.getItem(`tor21miner_${this.userId}`);
-                        if (savedData) {
-                            const data = JSON.parse(savedData);
-                            this.points = data.points || 0;
-                            this.ship = data.ship || "Basic";
-                            this.invites = data.invites || 0;
-                            this.energy = data.energy || 100;
-                            this.energyTimestamp = data.energyTimestamp || Date.now();
-                            this.tasks = data.tasks || { social: false, achievedLogros: new Set() };
-                            this.wallet = data.wallet || null;
-                            this.username = data.username || this.username;
-                            if (data.tasks && data.tasks.achievedLogros) {
-                                this.tasks.achievedLogros = new Set(data.tasks.achievedLogros);
-                            }
-                            // Restaurar energía basada en tiempo transcurrido
-                            const now = Date.now();
-                            const minutesPassed = Math.floor((now - this.energyTimestamp) / 60000);
-                            this.energy = Math.min(this.maxEnergy, this.energy + minutesPassed);
-                            this.energyTimestamp = now;
-                        } else {
-                            // Inicializar datos solo si no hay datos guardados
-                            this.points = 0;
-                            this.ship = "Basic";
-                            this.invites = 0;
-                            this.energy = 100;
-                            this.energyTimestamp = Date.now();
-                            this.tasks = { social: false, achievedLogros: new Set() };
-                            this.wallet = null;
-                            this.saveData(); // Guardar datos iniciales
-                        }
-                        console.log("Datos cargados:", { points: this.points, ship: this.ship, invites: this.invites, energy: this.energy, wallet: this.wallet, username: this.username });
-
-                        this.updateUI();
-                        this.bindEvents();
-                        console.log("Eventos vinculados");
-
-                        document.getElementById("loading-screen").style.display = "none";
-
-                        const bgMusic = document.getElementById("bg-music");
-                        bgMusic.volume = 0.1;
-                        bgMusic.play().catch(e => console.log("Música de fondo bloqueada, espera interacción:", e));
-
-                        setInterval(() => {
-                            const now = Date.now();
-                            const minutesPassed = Math.floor((now - this.energyTimestamp) / 60000);
-                            if (minutesPassed > 0) {
-                                this.energy = Math.min(this.maxEnergy, this.energy + minutesPassed);
-                                this.energyTimestamp = now;
-                                this.updateEnergyBar();
-                                this.saveData();
-                                console.log("Energía recargada:", this.energy);
-                            }
-                        }, 60000);
-                    }, 3000);
-                } catch (e) {
-                    console.error("Error al inicializar:", e);
-                    alert("Error al iniciar el juego: " + e.message);
+            // Cargar datos guardados o inicializar si no existen
+            const savedData = localStorage.getItem(`tor21miner_${this.userId}`);
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                this.points = data.points || 0;
+                this.ship = data.ship || "Basic";
+                this.invites = data.invites || 0;
+                this.energy = data.energy || 100;
+                this.energyTimestamp = data.energyTimestamp || Date.now();
+                this.tasks = data.tasks || { social: false, achievedLogros: new Set() };
+                this.wallet = data.wallet || null;
+                this.username = data.username || this.username;
+                if (data.tasks && data.tasks.achievedLogros) {
+                    this.tasks.achievedLogros = new Set(data.tasks.achievedLogros);
                 }
-            },
+
+                // Calcular la energía basada en el tiempo transcurrido desde el último guardado
+                const now = Date.now();
+                const minutesPassed = Math.floor((now - this.energyTimestamp) / 60000);
+                this.energy = Math.min(this.maxEnergy, this.energy + minutesPassed);
+                this.energyTimestamp = now; // Actualizar el timestamp al momento actual
+                console.log(`Energía al cargar: ${this.energy}, minutos transcurridos: ${minutesPassed}`);
+            } else {
+                // Inicializar datos solo si no hay datos guardados
+                this.points = 0;
+                this.ship = "Basic";
+                this.invites = 0;
+                this.energy = 100;
+                this.energyTimestamp = Date.now();
+                this.tasks = { social: false, achievedLogros: new Set() };
+                this.wallet = null;
+                this.saveData(); // Guardar datos iniciales
+            }
+
+            this.updateUI();
+            this.bindEvents();
+            console.log("Eventos vinculados");
+
+            document.getElementById("loading-screen").style.display = "none";
+
+            const bgMusic = document.getElementById("bg-music");
+            bgMusic.volume = 0.1;
+            bgMusic.play().catch(e => console.log("Música de fondo bloqueada, espera interacción:", e));
+
+            // Intervalo para recargar energía mientras la app está abierta
+            setInterval(() => {
+                const now = Date.now();
+                const minutesPassed = Math.floor((now - this.energyTimestamp) / 60000);
+                if (minutesPassed > 0) {
+                    this.energy = Math.min(this.maxEnergy, this.energy + minutesPassed);
+                    this.energyTimestamp = now;
+                    this.updateEnergyBar();
+                    this.saveData();
+                    console.log("Energía recargada:", this.energy);
+                }
+            }, 60000);
+        }, 3000);
+    } catch (e) {
+        console.error("Error al inicializar:", e);
+        alert("Error al iniciar el juego: " + e.message);
+    }
+},
 
             bindEvents() {
                 const tapArea = document.getElementById("tap-area");
@@ -443,23 +445,23 @@
             },
 
             saveData() {
-                const data = {
-                    points: this.points,
-                    ship: this.ship,
-                    invites: this.invites,
-                    energy: this.energy,
-                    energyTimestamp: this.energyTimestamp,
-                    maxEnergy: this.maxEnergy,
-                    tasks: {
-                        social: this.tasks.social,
-                        achievedLogros: Array.from(this.tasks.achievedLogros)
-                    },
-                    wallet: this.wallet,
-                    username: this.username
-                };
-                localStorage.setItem(`tor21miner_${this.userId}`, JSON.stringify(data));
-                console.log("Datos guardados:", data);
-            },
+    const data = {
+        points: this.points,
+        ship: this.ship,
+        invites: this.invites,
+        energy: this.energy, // Guardar la energía actual
+        energyTimestamp: this.energyTimestamp, // Guardar el timestamp actual
+        maxEnergy: this.maxEnergy,
+        tasks: {
+            social: this.tasks.social,
+            achievedLogros: Array.from(this.tasks.achievedLogros)
+        },
+        wallet: this.wallet,
+        username: this.username
+    };
+    localStorage.setItem(`tor21miner_${this.userId}`, JSON.stringify(data));
+    console.log("Datos guardados:", data);
+},
 
             updateUI() {
                 document.getElementById("points").innerHTML = `Puntos: ${this.points.toLocaleString()}`;
@@ -485,28 +487,29 @@
             },
 
             tap() {
-                console.log("Tap ejecutado");
-                if (!this.wallet) {
-                    this.showAlert("¡Registra tu wallet para jugar!");
-                    return;
-                }
-                if (this.energy > 0) {
-                    this.energy -= 1;
-                    const earned = this.tapMultiplier[this.ship];
-                    this.points += earned;
-                    this.updateUI();
-                    this.showTapEffect(earned);
-                    this.saveData();
-                    if (!this.soundMuted) {
-                        const tapSound = document.getElementById("tap-sound");
-                        tapSound.currentTime = 0;
-                        tapSound.volume = 0.3;
-                        tapSound.play().catch(e => console.log("Sonido bloqueado:", e));
-                    }
-                } else {
-                    this.showAlert("¡Sin energía! Espera a que se recargue.");
-                }
-            },
+    console.log("Tap ejecutado");
+    if (!this.wallet) {
+        this.showAlert("¡Registra tu wallet para jugar!");
+        return;
+    }
+    if (this.energy > 0) {
+        this.energy -= 1;
+        const earned = this.tapMultiplier[this.ship];
+        this.points += earned;
+        this.energyTimestamp = Date.now(); // Actualizar el timestamp después de cada tap
+        this.updateUI();
+        this.showTapEffect(earned);
+        this.saveData(); // Guardar inmediatamente después de cada tap
+        if (!this.soundMuted) {
+            const tapSound = document.getElementById("tap-sound");
+            tapSound.currentTime = 0;
+            tapSound.volume = 0.3;
+            tapSound.play().catch(e => console.log("Sonido bloqueado:", e));
+        }
+    } else {
+        this.showAlert("¡Sin energía! Espera a que se recargue.");
+    }
+},
 
             showTapEffect(earned) {
                 const tapArea = document.getElementById("tap-area");

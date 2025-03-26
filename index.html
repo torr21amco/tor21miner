@@ -587,26 +587,28 @@
             },
 
             connectWallet() {
-                console.log("Registrar Wallet ejecutado");
-                if (this.wallet) {
-                    this.showAlert(`Wallet ya registrada: ${this.wallet}`);
-                    return;
-                }
-                const telegramUsername = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.username : null;
-                const inputUsername = prompt("Ingresa tu username de Telegram para verificar:");
-                if (!inputUsername || (telegramUsername && inputUsername !== telegramUsername)) {
-                    this.showAlert("El username no coincide con tu cuenta de Telegram.");
-                    return;
-                }
-                const newWallet = prompt("Ingresa tu dirección Polygon:");
-                if (newWallet) {
-                    this.wallet = newWallet;
-                    this.username = inputUsername;
-                    this.updateUI();
-                    this.showAlert("¡Wallet y usuario registrados!");
-                    this.saveData();
-                }
-            },
+    console.log("Registrar Wallet ejecutado");
+    if (this.wallet) {
+        this.showAlert(`Wallet ya registrada: ${this.wallet}`);
+        return;
+    }
+    const telegramUsername = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.username : "Anonimo";
+    const newWallet = prompt("Ingresa tu dirección Polygon (ejemplo: 0x8c32705007F236bAc8B7A949Fc596Ebbf2ec2b4e):");
+    if (newWallet) {
+        // Validar que la dirección sea un formato válido (básico)
+        if (/^0x[a-fA-F0-9]{40}$/.test(newWallet)) {
+            this.wallet = newWallet;
+            this.username = telegramUsername; // Usar el username de Telegram directamente
+            this.updateUI();
+            this.showAlert(`¡Wallet registrada con éxito!\nUsuario: @${this.username}\nWallet: ${this.wallet}`);
+            this.saveData();
+        } else {
+            this.showAlert("Dirección Polygon inválida. Asegúrate de que comience con '0x' y tenga 40 caracteres hexadecimales.");
+        }
+    } else {
+        this.showAlert("No se ingresó ninguna dirección. Por favor, intenta de nuevo.");
+    }
+},
 
             showAffiliate() {
                 console.log("Invitar ejecutado");

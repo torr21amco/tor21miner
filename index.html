@@ -415,7 +415,6 @@
         alert("Error al iniciar el juego: " + e.message);
     }
 },
-
             bindEvents() {
                 const tapArea = document.getElementById("tap-area");
                 const upgradeBtn = document.getElementById("upgrade-btn");
@@ -444,7 +443,7 @@
                 infoClose.addEventListener("click", () => document.getElementById("info-popup").style.display = "none");
             },
 
-            saveData() {
+           saveData() {
     const data = {
         points: this.points,
         ship: this.ship,
